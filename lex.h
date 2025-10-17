@@ -1,0 +1,266 @@
+#ifndef _NC_LEX
+#define _NC_LEX
+
+#include<stdlib.h>
+#include<string.h>
+#include<stdint.h>
+
+// TODO add 1_000_200 stuff??
+// polish up!
+// add symbols n shit -> nice open source-y interface
+
+char char_is_letter(char c);
+inline char char_is_letter(char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+char char_is_digit(char c);
+inline char char_is_digit(char c) {
+    return c >= '0' && c <= '9';
+}
+
+char char_is_symbol(char c);
+inline char char_is_symbol(char c) {
+    return (c >= 33 && c <= 47) || (c >= 58 && c <= 64) || (c >= 123 && c <= 126) || (c >= 91 && c <= 96);
+}
+
+char char_is_space(char c);
+inline char char_is_space(char c) {
+   return c == ' ' || c == '\n';
+}
+
+
+// LEX CODE -noclue
+
+typedef struct { char* input; size_t pos; } lex_t;
+
+lex_t lex_new(char* input);
+inline lex_t lex_new(char* input) {
+   return (lex_t) { .input = input, .pos = 0 };
+}
+
+char lex_cchar(lex_t* lex);
+inline char lex_cchar(lex_t* lex) {
+   return lex->input[lex->pos];
+}
+
+char lex_nchar(lex_t* lex);
+inline char lex_nchar(lex_t* lex) {
+   return lex->input[lex->pos++];
+}
+
+char lex_is_done(lex_t* lex);
+inline char lex_is_done(lex_t* lex) {
+   return lex_cchar(lex) == 0;
+}
+
+char lex_peek(lex_t* lex, int offset);
+inline char lex_peek(lex_t* lex, int offset) {
+   return lex->input[lex->pos + offset];
+}
+
+void lex_move(lex_t* lex, int shift);
+inline void lex_move(lex_t* lex, int shift) {
+   lex->pos += shift;
+}
+
+void lex_skip_spaces(lex_t* lex);
+inline void lex_skip_spaces(lex_t* lex) {
+   while(char_is_space(lex_cchar(lex))) { lex->pos++; }
+}
+
+char lex_check_s(lex_t* lex, const char* seq) {
+   size_t x = 0;
+
+   while(lex_peek(lex, x) != 0 && (lex_peek(lex, x) == seq[x])) x++;
+
+   if (seq[x] == 0) {
+      lex_move(lex, x);
+      return 1;
+   }
+
+   return 0;
+}
+
+char* lex_read_string(lex_t* lex);
+inline char* lex_read_string(lex_t* lex) {
+   if (lex_cchar(lex) != '"') return NULL;
+   lex->pos++;
+
+   size_t x = 0;
+   while(lex_cchar(lex) != '"') {
+      if(lex_cchar(lex) == 0) {
+         printf("Expected \"");
+	 exit(1);
+      }
+
+      lex->pos++;
+      x++;
+   }
+
+   if(x == 0) return NULL;
+
+   char* w = malloc(x + 1);
+   memcpy(w, lex->input + lex->pos - x, x);
+   w[x] = 0;
+   
+   lex->pos++; // consume last "
+
+   return w;
+}
+
+char* lex_read_word(lex_t* lex);
+inline char* lex_read_word(lex_t* lex) {
+   size_t x = 0;
+
+   while(char_is_letter(lex_cchar(lex)) || lex_cchar(lex) == '_') { x++; lex->pos++; }
+
+   if(0 == x) return NULL;
+
+   char* w = malloc(x + 1);
+   memcpy(w, lex->input + lex->pos - x, x);
+   w[x] = 0;
+
+   return w;
+}
+
+typedef enum {
+   NUMBER_FLOAT,
+   NUMBER_DOUBLE,
+   NUMBER_UINT,
+} number_type;
+
+// used for tokenization, so since the - will be separated from the number anyways, might as well use uint
+typedef struct {
+   union {
+       uint64_t uint_v;
+       float   float_v;
+       double double_v;
+   };
+
+   number_type type;
+} number_t;
+
+number_t lex_read_number(lex_t* lex);
+inline number_t lex_read_number(lex_t* lex) {
+   number_t num = { .type = NUMBER_UINT, .uint_v = 0 };
+   
+   size_t start_pos = lex->pos;
+   while(char_is_digit(lex_cchar(lex))) {
+      num.uint_v = num.uint_v * 10 + lex_cchar(lex) - '0';
+      lex->pos++;
+   }
+
+   if (lex_cchar(lex) != '.')
+      return num;
+
+   lex->pos++;
+
+   num.type = NUMBER_DOUBLE;
+   while(char_is_digit(lex_cchar(lex))) {
+      lex->pos++;
+   }
+
+   void* buffer = malloc(lex->pos - start_pos);
+   memcpy(buffer, lex->input + start_pos, lex->pos - start_pos);
+   
+   num.double_v = atof(buffer);
+   free(buffer); //die!
+
+   if(lex_cchar(lex) == 'f') {
+       num.float_v = num.double_v;
+       num.type = NUMBER_FLOAT;
+       lex->pos++;
+       return num;
+   }
+   return num;
+}
+
+uint64_t lex_read_int(lex_t* lex);
+inline uint64_t lex_read_int(lex_t* lex) {
+   uint64_t n = 0;
+
+   while(char_is_digit(lex_cchar(lex))) {
+      n = n * 10 + lex_cchar(lex) - '0';
+      lex->pos++;
+   }
+
+   return n;
+}
+
+typedef struct { char c[3]; } symbol_t;
+
+char lex_join_symbols(symbol_t left, char right);
+inline char lex_join_symbols(symbol_t left, char right) {
+   return !left.c[0] && char_is_symbol(right);
+}
+
+symbol_t lex_read_symbol(lex_t* lex);
+inline symbol_t lex_read_symbol(lex_t* lex) {
+   symbol_t x = {0};
+   size_t len = 0;
+   
+   while(len < sizeof(symbol_t) && lex_join_symbols(x, lex_cchar(lex))) {
+      x.c[len++] = lex_cchar(lex);
+      lex->pos++;
+   }
+
+   return x;
+}
+
+typedef enum {
+   TOKEN_NUMBER,
+   TOKEN_STRING,
+   TOKEN_SYMBOL,
+   TOKEN_LITERAL,
+   TOKEN_NULL
+} token_type;
+
+typedef struct {
+   union {
+       char*     literal_v;
+       char*     string_v;
+       symbol_t  symbol_v; 
+       number_t  number_v;
+   };
+
+   token_type type;
+} token_t;
+
+token_t lex_read_token(lex_t* lex) {
+   lex_skip_spaces(lex);
+
+   token_t t = {0};
+
+   // no more characters
+   if(lex_is_done(lex)) {
+      t.type = TOKEN_NULL;
+      return t;
+   }
+   
+   char c = lex_cchar(lex);
+   if(char_is_letter(c)) {
+      t.type = TOKEN_LITERAL;
+      t.literal_v = lex_read_word(lex);
+   }
+   else if(char_is_digit(c)) {
+      t.type = TOKEN_NUMBER;
+      t.number_v = lex_read_number(lex);
+   }
+   else if(c == '"') {
+      t.type = TOKEN_STRING;
+      t.string_v = lex_read_string(lex);
+   }
+   else if(char_is_symbol(c)) {
+      t.type = TOKEN_SYMBOL;
+      t.symbol_v = lex_read_symbol(lex);
+   }
+   else {
+      printf("Unexpected Token starting with %c!\n", c);
+      exit(1);
+   }
+
+   return t;
+}
+
+#endif
