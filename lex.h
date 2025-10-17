@@ -5,9 +5,19 @@
 #include<string.h>
 #include<stdint.h>
 
-// TODO add 1_000_200 stuff??
-// polish up!
-// add symbols n shit -> nice open source-y interface
+#ifndef LEX_SINGLE_THREADED
+#define LEX_SINGLE_THREADED 1
+#endif
+
+#ifndef LEX_SYMBOLS
+#define LEX_SYMBOLS {"+", "-", "*", "/", "++"}
+#endif
+
+#ifndef LEX_ESC_SEQUENCES
+#define LEX_ESC_SEQUENCES {'n', 10}
+#endif
+
+// TODO: add string builder for strings (not words) -> add escape sequences!
 
 char char_is_letter(char c);
 inline char char_is_letter(char c) {
@@ -32,10 +42,10 @@ inline char char_is_space(char c) {
 
 // LEX CODE -noclue
 
-typedef struct { char* input; size_t pos; } lex_t;
+typedef struct { const char* input; size_t pos; } lex_t;
 
-lex_t lex_new(char* input);
-inline lex_t lex_new(char* input) {
+lex_t lex_new(const char* input);
+inline lex_t lex_new(const char* input) {
    return (lex_t) { .input = input, .pos = 0 };
 }
 
@@ -161,11 +171,21 @@ inline number_t lex_read_number(lex_t* lex) {
       lex->pos++;
    }
 
-   void* buffer = malloc(lex->pos - start_pos);
+   #if !LEX_SINGLE_THREADED 
+	void* buffer = malloc(lex->pos - start_pos);
+   #else
+	static char buffer[32];
+	if (lex->pos - start_pos > sizeof(buffer)) {
+	    printf("Too many floating-point digits!");
+	    exit(1);
+	}
+   #endif
    memcpy(buffer, lex->input + start_pos, lex->pos - start_pos);
    
    num.double_v = atof(buffer);
-   free(buffer); //die!
+   #if !LEX_SINGLE_THREADED 
+       free(buffer);
+   #endif
 
    if(lex_cchar(lex) == 'f') {
        num.float_v = num.double_v;
@@ -188,25 +208,37 @@ inline uint64_t lex_read_int(lex_t* lex) {
    return n;
 }
 
-typedef struct { char c[3]; } symbol_t;
-
-char lex_join_symbols(symbol_t left, char right);
-inline char lex_join_symbols(symbol_t left, char right) {
-   return !left.c[0] && char_is_symbol(right);
-}
+typedef struct { 
+   const char* c;
+   size_t len;
+} symbol_t;
 
 symbol_t lex_read_symbol(lex_t* lex);
 inline symbol_t lex_read_symbol(lex_t* lex) {
-   symbol_t x = {0};
-   size_t len = 0;
+   const char* _symbols[]  = LEX_SYMBOLS;
+   const size_t _sym_count = sizeof(_symbols) / sizeof(char*);
    
-   while(len < sizeof(symbol_t) && lex_join_symbols(x, lex_cchar(lex))) {
-      x.c[len++] = lex_cchar(lex);
-      lex->pos++;
+   symbol_t symbol;
+   for(size_t i = 0; i < _sym_count; i++) {
+      size_t x = lex->pos;
+      if(lex_check_s(lex, _symbols[i])) {
+          symbol.c   = _symbols[i];
+	  symbol.len = lex->pos - x;
+          return symbol;
+      }
    }
-
-   return x;
+   
+   symbol.c   = lex->input + lex->pos++;
+   symbol.len = 1;
+   return symbol;
 }
+
+char symbol_match(symbol_t symbol, const char* sym);
+inline char symbol_match(symbol_t symbol, const char* sym) {
+   size_t x = 0;
+   while(symbol.c[x] == sym[x] && sym[x] != 0) x++;
+   return x == symbol.len;
+}  
 
 typedef enum {
    TOKEN_NUMBER,
