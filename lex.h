@@ -102,6 +102,11 @@ inline lex_t lex_new(const char* input) {
    return (lex_t) { .sb = string_new(), .line = 1, .line_change_pos = 0, .input = input, .pos = 0 };
 }
 
+void lex_free(lex_t* lex);
+inline void lex_free(lex_t* lex) {
+   free(lex.sb.content);
+}
+
 char lex_cchar(lex_t* lex);
 inline char lex_cchar(lex_t* lex) {
    return lex->input[lex->pos];

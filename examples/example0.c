@@ -44,6 +44,8 @@ int main() {
    }
    // IGNORE THE MEMORY LEAK, THIS IS JUST AN EXAMPLE
    // TOKEN_LITERAL and TOKEN_STRING allocate memory!
+   
+   lex_free(&lex); // dont forget about this tho..
    return 0;
 }
 
