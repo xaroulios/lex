@@ -1,11 +1,12 @@
 #include <stdio.h>
 
 #define LEX_SYMBOLS {">=", "<=", "==", "!=", "||", "&&", "!=", "+k"}
+#define LEX_SPECIAL {'n', '\n', '\\', '\\', '"', '"'}
 
 #include "lex.h"
 
 int main() {
-   lex_t lex = lex_new("2 + 3.14-10.9f \"hello world\"NO! +k");
+   lex_t lex = lex_new("2 + 3.14-10.9f \"he\\\\llo \\nworld\"NO! \"\\\" okay\" +k");
    
    token_t token;
    while((token = lex_read_token(&lex)).type != TOKEN_NULL) {

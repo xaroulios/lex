@@ -13,11 +13,12 @@
 #define LEX_SYMBOLS {"+", "-", "*", "/", "++"}
 #endif
 
-#ifndef LEX_ESC_SEQUENCES
-#define LEX_ESC_SEQUENCES {'n', 10}
+#ifndef LEX_SPECIAL
+#define LEX_SPECIAL {'n', '\n'}
 #endif
 
 // TODO: add string builder for strings (not words) -> add escape sequences!
+
 
 char char_is_letter(char c);
 inline char char_is_letter(char c) {
@@ -39,14 +40,47 @@ inline char char_is_space(char c) {
    return c == ' ' || c == '\n';
 }
 
+//
+//
+#define _STRING_ICAPACITY 20
+
+typedef struct {
+   char* content;
+   size_t capacity;
+   size_t length;
+} string_t;
+
+string_t string_new();
+inline string_t string_new() {
+   char* w = malloc(_STRING_ICAPACITY + 1);
+   w[0] = 0;
+
+   return (string_t) { .length = 0, .capacity = _STRING_ICAPACITY, .content = w };
+}
+
+void string_append(string_t* sb, char c);
+inline void string_append(string_t* sb, char c) {
+   if (sb->length + 1 > sb->capacity) {
+      sb->content = realloc(sb->content, sb->capacity *= 1.5);
+   }
+
+   sb->content[sb->length++] = c;
+   sb->content[sb->length]   = 0;
+}
+
 
 // LEX CODE -noclue
 
-typedef struct { const char* input; size_t pos; } lex_t;
+typedef struct { 
+    const char* input; 
+    size_t pos;
+
+    string_t sb;
+} lex_t;
 
 lex_t lex_new(const char* input);
 inline lex_t lex_new(const char* input) {
-   return (lex_t) { .input = input, .pos = 0 };
+   return (lex_t) { .sb = string_new(), .input = input, .pos = 0 };
 }
 
 char lex_cchar(lex_t* lex);
@@ -93,7 +127,7 @@ char lex_check_s(lex_t* lex, const char* seq) {
 }
 
 char* lex_read_string(lex_t* lex);
-inline char* lex_read_string(lex_t* lex) {
+/*inline char* lex_read_string(lex_t* lex) {
    if (lex_cchar(lex) != '"') return NULL;
    lex->pos++;
 
@@ -116,6 +150,52 @@ inline char* lex_read_string(lex_t* lex) {
    
    lex->pos++; // consume last "
 
+   return w;
+}*/
+inline char* lex_read_string(lex_t* lex) {
+   if(lex_cchar(lex) != '"') return NULL;
+   lex->pos++;
+
+   lex->sb.length = 0; // reset the string builder, no need to allocate more!
+   
+   char c;
+   while((c = lex_cchar(lex)) != '"') {
+      if (c == 0) {
+         printf("Expected \"\n");
+	 exit(1);
+      }
+
+      if(c == '\\') {
+         // special characters!!
+         char c = lex->input[++lex->pos];
+
+	 const char  special_characters[] = LEX_SPECIAL;
+
+	 for(uint32_t i = 0; i < sizeof(special_characters); i += 2) {
+	     if(special_characters[i] == c) {
+	         string_append(&lex->sb, special_characters[i+1]);
+		 goto _OK_;
+	     }
+	 }
+
+	 printf("Unspecified special character \\%c\n", c);
+	 exit(1);
+_OK_:;
+      }
+      else {
+         string_append(&lex->sb, c);
+      }
+
+      lex->pos++;
+   }
+   lex->pos++;
+
+   if(lex->sb.length == 0) return NULL;
+
+   char* w = malloc(lex->sb.length + 1);
+   memcpy(w, lex->sb.content, lex->sb.length);
+   w[lex->sb.length] = 0;
+  
    return w;
 }
 
@@ -236,7 +316,7 @@ inline symbol_t lex_read_symbol(lex_t* lex) {
 char symbol_match(symbol_t symbol, const char* sym);
 inline char symbol_match(symbol_t symbol, const char* sym) {
    size_t x = 0;
-   while(symbol.c[x] == sym[x] && sym[x] != 0) x++;
+   while(x < symbol.len && symbol.c[x] == sym[x] && sym[x] != 0) x++;
    return x == symbol.len;
 }  
 
