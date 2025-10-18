@@ -6,7 +6,7 @@
 #define LEX_SYMBOLS {">=", "<=", "==", "!=", "||", "&&", "!=", "+k"}
 
 // this is how you define special characters!
-// they are defined in pairs: 'n', '\n' means that when the lexerer sees \n (inside a double quotes) it inserts the newline character instead
+// they are defined in pairs: 'n', '\n' means that when the lexerer sees \n (inside double quotes of course) it inserts the newline character instead
 // '\\', '\\' means that when the lexerer sees \\, it replaces it with \
 // '"', '"'   means that when the lexerer sees \", it replaces it with "
 // and so on!
