@@ -35,11 +35,6 @@ inline char char_is_symbol(char c) {
     return (c >= 33 && c <= 47) || (c >= 58 && c <= 64) || (c >= 123 && c <= 126) || (c >= 91 && c <= 96);
 }
 
-char char_is_space(char c);
-inline char char_is_space(char c) {
-   return c == ' ' || c == '\n';
-}
-
 //
 //
 #define _STRING_ICAPACITY 20
@@ -75,12 +70,15 @@ typedef struct {
     const char* input; 
     size_t pos;
 
+    size_t line_change_pos;
+    size_t line;
+
     string_t sb;
 } lex_t;
 
 lex_t lex_new(const char* input);
 inline lex_t lex_new(const char* input) {
-   return (lex_t) { .sb = string_new(), .input = input, .pos = 0 };
+   return (lex_t) { .sb = string_new(), .line = 1, .line_change_pos = 0, .input = input, .pos = 0 };
 }
 
 char lex_cchar(lex_t* lex);
@@ -110,7 +108,18 @@ inline void lex_move(lex_t* lex, int shift) {
 
 void lex_skip_spaces(lex_t* lex);
 inline void lex_skip_spaces(lex_t* lex) {
-   while(char_is_space(lex_cchar(lex))) { lex->pos++; }
+   while(1) {
+       char c = lex_cchar(lex);
+       
+       if(c == '\n') {
+          lex->line_change_pos = 1 + lex->pos;
+	  lex->line++;
+       }
+       else if(c != ' ')
+	  break;
+
+       lex->pos++;
+   }
 }
 
 char lex_check_s(lex_t* lex, const char* seq) {
@@ -127,31 +136,6 @@ char lex_check_s(lex_t* lex, const char* seq) {
 }
 
 char* lex_read_string(lex_t* lex);
-/*inline char* lex_read_string(lex_t* lex) {
-   if (lex_cchar(lex) != '"') return NULL;
-   lex->pos++;
-
-   size_t x = 0;
-   while(lex_cchar(lex) != '"') {
-      if(lex_cchar(lex) == 0) {
-         printf("Expected \"");
-	 exit(1);
-      }
-
-      lex->pos++;
-      x++;
-   }
-
-   if(x == 0) return NULL;
-
-   char* w = malloc(x + 1);
-   memcpy(w, lex->input + lex->pos - x, x);
-   w[x] = 0;
-   
-   lex->pos++; // consume last "
-
-   return w;
-}*/
 inline char* lex_read_string(lex_t* lex) {
    if(lex_cchar(lex) != '"') return NULL;
    lex->pos++;
@@ -170,7 +154,6 @@ inline char* lex_read_string(lex_t* lex) {
          char c = lex->input[++lex->pos];
 
 	 const char  special_characters[] = LEX_SPECIAL;
-
 	 for(uint32_t i = 0; i < sizeof(special_characters); i += 2) {
 	     if(special_characters[i] == c) {
 	         string_append(&lex->sb, special_characters[i+1]);
@@ -182,7 +165,7 @@ inline char* lex_read_string(lex_t* lex) {
 	 exit(1);
 _OK_:;
       }
-      else {
+      else if (c >= 32) {
          string_append(&lex->sb, c);
       }
 
@@ -336,6 +319,9 @@ typedef struct {
        number_t  number_v;
    };
 
+   size_t line;
+   size_t column;
+
    token_type type;
 } token_t;
 
@@ -371,6 +357,9 @@ token_t lex_read_token(lex_t* lex) {
       printf("Unexpected Token starting with %c!\n", c);
       exit(1);
    }
+
+   t.line   = lex->line;
+   t.column = lex->pos - lex->line_change_pos;
 
    return t;
 }

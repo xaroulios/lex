@@ -6,11 +6,11 @@
 #include "lex.h"
 
 int main() {
-   lex_t lex = lex_new("2 + 3.14-10.9f \"he\\\\llo \\nworld\"NO! \"\\\" okay\" +k");
+   lex_t lex = lex_new("2 + 3.14-10.9f \"he\\\\llo \\nworld\"NO! \"\\\" okay\" +k\n2");
    
    token_t token;
    while((token = lex_read_token(&lex)).type != TOKEN_NULL) {
-      printf("[%d]: ", token.type);
+      printf("[%d (line=%ld, column=%ld)]: ", token.type, token.line, token.column);
       if (token.type == TOKEN_NUMBER) {
          number_t num = token.number_v;
 	 if (num.type == NUMBER_UINT)
