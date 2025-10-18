@@ -248,7 +248,7 @@ static number_t lex_read_number(lex_t* lex) {
 	void* buffer = malloc(lex->pos - start_pos);
    #else
 	static char buffer[32];
-	if (lex->pos - start_pos > sizeof(buffer)) {
+	if (lex->pos - start_pos > sizeof(buffer) - 1) {
 	    printf("Too many floating-point digits! (line=%d)\n", lex->line);
 	    exit(1);
 	}
