@@ -104,7 +104,7 @@ inline lex_t lex_new(const char* input) {
 
 void lex_free(lex_t* lex);
 inline void lex_free(lex_t* lex) {
-   free(lex.sb.content);
+   free(lex->sb.content);
 }
 
 char lex_cchar(lex_t* lex);
