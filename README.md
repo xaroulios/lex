@@ -1,2 +1,2 @@
 # lex
-lightweight lexerer written in C
+lightweight lexerer written in C.

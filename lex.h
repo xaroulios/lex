@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2025 NoClueBruh/Xaroulios
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #ifndef _NC_LEX
 #define _NC_LEX
 
@@ -16,9 +40,6 @@
 #ifndef LEX_SPECIAL
 #define LEX_SPECIAL {'n', '\n'}
 #endif
-
-// TODO: add string builder for strings (not words) -> add escape sequences!
-
 
 char char_is_letter(char c);
 inline char char_is_letter(char c) {
@@ -41,8 +62,8 @@ inline char char_is_symbol(char c) {
 
 typedef struct {
    char* content;
-   size_t capacity;
-   size_t length;
+   uint32_t capacity;
+   uint32_t length;
 } string_t;
 
 string_t string_new();
@@ -68,10 +89,10 @@ inline void string_append(string_t* sb, char c) {
 
 typedef struct { 
     const char* input; 
-    size_t pos;
+    uint32_t pos;
 
-    size_t line_change_pos;
-    size_t line;
+    uint32_t line_change_pos;
+    uint32_t line;
 
     string_t sb;
 } lex_t;
@@ -108,14 +129,14 @@ inline void lex_move(lex_t* lex, int shift) {
 
 void lex_skip_spaces(lex_t* lex);
 inline void lex_skip_spaces(lex_t* lex) {
-   while(1) {
+    while(1) {
        char c = lex_cchar(lex);
        
        if(c == '\n') {
-          lex->line_change_pos = 1 + lex->pos;
+          lex->line_change_pos = lex->pos;
 	  lex->line++;
        }
-       else if(c != ' ')
+       else if(c == 0 || c > ' ')
 	  break;
 
        lex->pos++;
@@ -161,7 +182,7 @@ inline char* lex_read_string(lex_t* lex) {
 	     }
 	 }
 
-	 printf("Unspecified special character \\%c\n", c);
+	 printf("Unspecified special character \\%c (line=%d, column=%d)\n", c, lex->line, lex->pos - lex->line_change_pos);
 	 exit(1);
 _OK_:;
       }
@@ -184,7 +205,7 @@ _OK_:;
 
 char* lex_read_word(lex_t* lex);
 inline char* lex_read_word(lex_t* lex) {
-   size_t x = 0;
+   uint32_t x = 0;
 
    while(char_is_letter(lex_cchar(lex)) || lex_cchar(lex) == '_') { x++; lex->pos++; }
 
@@ -218,7 +239,7 @@ number_t lex_read_number(lex_t* lex);
 inline number_t lex_read_number(lex_t* lex) {
    number_t num = { .type = NUMBER_UINT, .uint_v = 0 };
    
-   size_t start_pos = lex->pos;
+   uint32_t start_pos = lex->pos;
    while(char_is_digit(lex_cchar(lex))) {
       num.uint_v = num.uint_v * 10 + lex_cchar(lex) - '0';
       lex->pos++;
@@ -239,7 +260,7 @@ inline number_t lex_read_number(lex_t* lex) {
    #else
 	static char buffer[32];
 	if (lex->pos - start_pos > sizeof(buffer)) {
-	    printf("Too many floating-point digits!");
+	    printf("Too many floating-point digits! (line=%d)\n", lex->line);
 	    exit(1);
 	}
    #endif
@@ -273,17 +294,17 @@ inline uint64_t lex_read_int(lex_t* lex) {
 
 typedef struct { 
    const char* c;
-   size_t len;
+   uint32_t len;
 } symbol_t;
 
 symbol_t lex_read_symbol(lex_t* lex);
 inline symbol_t lex_read_symbol(lex_t* lex) {
    const char* _symbols[]  = LEX_SYMBOLS;
-   const size_t _sym_count = sizeof(_symbols) / sizeof(char*);
+   const uint16_t _sym_count = sizeof(_symbols) / sizeof(char*);
    
    symbol_t symbol;
-   for(size_t i = 0; i < _sym_count; i++) {
-      size_t x = lex->pos;
+   for(uint16_t i = 0; i < _sym_count; i++) {
+      uint32_t x = lex->pos;
       if(lex_check_s(lex, _symbols[i])) {
           symbol.c   = _symbols[i];
 	  symbol.len = lex->pos - x;
@@ -298,7 +319,7 @@ inline symbol_t lex_read_symbol(lex_t* lex) {
 
 char symbol_match(symbol_t symbol, const char* sym);
 inline char symbol_match(symbol_t symbol, const char* sym) {
-   size_t x = 0;
+   uint32_t x = 0;
    while(x < symbol.len && symbol.c[x] == sym[x] && sym[x] != 0) x++;
    return x == symbol.len;
 }  
@@ -319,8 +340,8 @@ typedef struct {
        number_t  number_v;
    };
 
-   size_t line;
-   size_t column;
+   uint32_t line;
+   uint32_t column;
 
    token_type type;
 } token_t;
@@ -329,6 +350,8 @@ token_t lex_read_token(lex_t* lex) {
    lex_skip_spaces(lex);
 
    token_t t = {0};
+    
+   uint32_t token_start = lex->pos;
 
    // no more characters
    if(lex_is_done(lex)) {
@@ -354,12 +377,12 @@ token_t lex_read_token(lex_t* lex) {
       t.symbol_v = lex_read_symbol(lex);
    }
    else {
-      printf("Unexpected Token starting with %c!\n", c);
+      printf("Unexpected Token starting with %c (line=%d)!\n", c, lex->line);
       exit(1);
    }
 
    t.line   = lex->line;
-   t.column = lex->pos - lex->line_change_pos;
+   t.column = token_start - lex->line_change_pos;
 
    return t;
 }
