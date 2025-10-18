@@ -41,18 +41,15 @@ SOFTWARE.
 #define LEX_SPECIAL {'n', '\n'}
 #endif
 
-char char_is_letter(char c);
-inline char char_is_letter(char c) {
+static inline char char_is_letter(char c) {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
-char char_is_digit(char c);
-inline char char_is_digit(char c) {
+static inline char char_is_digit(char c) {
     return c >= '0' && c <= '9';
 }
 
-char char_is_symbol(char c);
-inline char char_is_symbol(char c) {
+static inline char char_is_symbol(char c) {
     return (c >= 33 && c <= 47) || (c >= 58 && c <= 64) || (c >= 123 && c <= 126) || (c >= 91 && c <= 96);
 }
 
@@ -66,16 +63,14 @@ typedef struct {
    uint32_t length;
 } string_t;
 
-string_t string_new();
-inline string_t string_new() {
+static inline string_t string_new() {
    char* w = malloc(_STRING_ICAPACITY + 1);
    w[0] = 0;
 
    return (string_t) { .length = 0, .capacity = _STRING_ICAPACITY, .content = w };
 }
 
-void string_append(string_t* sb, char c);
-inline void string_append(string_t* sb, char c) {
+static inline void string_append(string_t* sb, char c) {
    if (sb->length + 1 > sb->capacity) {
       sb->content = realloc(sb->content, sb->capacity *= 1.5);
    }
@@ -97,43 +92,35 @@ typedef struct {
     string_t sb;
 } lex_t;
 
-lex_t lex_new(const char* input);
-inline lex_t lex_new(const char* input) {
+static inline lex_t lex_new(const char* input) {
    return (lex_t) { .sb = string_new(), .line = 1, .line_change_pos = 0, .input = input, .pos = 0 };
 }
 
-void lex_free(lex_t* lex);
-inline void lex_free(lex_t* lex) {
+static inline void lex_free(lex_t* lex) {
    free(lex->sb.content);
 }
 
-char lex_cchar(lex_t* lex);
-inline char lex_cchar(lex_t* lex) {
+static inline char lex_cchar(lex_t* lex) {
    return lex->input[lex->pos];
 }
 
-char lex_nchar(lex_t* lex);
-inline char lex_nchar(lex_t* lex) {
+static inline char lex_nchar(lex_t* lex) {
    return lex->input[lex->pos++];
 }
 
-char lex_is_done(lex_t* lex);
-inline char lex_is_done(lex_t* lex) {
+static inline char lex_is_done(lex_t* lex) {
    return lex_cchar(lex) == 0;
 }
 
-char lex_peek(lex_t* lex, int offset);
-inline char lex_peek(lex_t* lex, int offset) {
+static inline char lex_peek(lex_t* lex, int offset) {
    return lex->input[lex->pos + offset];
 }
 
-void lex_move(lex_t* lex, int shift);
-inline void lex_move(lex_t* lex, int shift) {
+static inline void lex_move(lex_t* lex, int shift) {
    lex->pos += shift;
 }
 
-void lex_skip_spaces(lex_t* lex);
-inline void lex_skip_spaces(lex_t* lex) {
+static inline void lex_skip_spaces(lex_t* lex) {
     while(1) {
        char c = lex_cchar(lex);
        
@@ -148,7 +135,7 @@ inline void lex_skip_spaces(lex_t* lex) {
    }
 }
 
-char lex_check_s(lex_t* lex, const char* seq) {
+static inline char lex_check_s(lex_t* lex, const char* seq) {
    size_t x = 0;
 
    while(lex_peek(lex, x) != 0 && (lex_peek(lex, x) == seq[x])) x++;
@@ -161,8 +148,7 @@ char lex_check_s(lex_t* lex, const char* seq) {
    return 0;
 }
 
-char* lex_read_string(lex_t* lex);
-inline char* lex_read_string(lex_t* lex) {
+static char* lex_read_string(lex_t* lex) {
    if(lex_cchar(lex) != '"') return NULL;
    lex->pos++;
 
@@ -208,8 +194,7 @@ _OK_:;
    return w;
 }
 
-char* lex_read_word(lex_t* lex);
-inline char* lex_read_word(lex_t* lex) {
+static inline char* lex_read_word(lex_t* lex) {
    uint32_t x = 0;
 
    while(char_is_letter(lex_cchar(lex)) || lex_cchar(lex) == '_') { x++; lex->pos++; }
@@ -240,8 +225,7 @@ typedef struct {
    number_type type;
 } number_t;
 
-number_t lex_read_number(lex_t* lex);
-inline number_t lex_read_number(lex_t* lex) {
+static number_t lex_read_number(lex_t* lex) {
    number_t num = { .type = NUMBER_UINT, .uint_v = 0 };
    
    uint32_t start_pos = lex->pos;
@@ -285,8 +269,7 @@ inline number_t lex_read_number(lex_t* lex) {
    return num;
 }
 
-uint64_t lex_read_int(lex_t* lex);
-inline uint64_t lex_read_int(lex_t* lex) {
+static inline uint64_t lex_read_int(lex_t* lex) {
    uint64_t n = 0;
 
    while(char_is_digit(lex_cchar(lex))) {
@@ -302,8 +285,7 @@ typedef struct {
    uint32_t len;
 } symbol_t;
 
-symbol_t lex_read_symbol(lex_t* lex);
-inline symbol_t lex_read_symbol(lex_t* lex) {
+static inline symbol_t lex_read_symbol(lex_t* lex) {
    const char* _symbols[]  = LEX_SYMBOLS;
    const uint16_t _sym_count = sizeof(_symbols) / sizeof(char*);
    
@@ -322,8 +304,7 @@ inline symbol_t lex_read_symbol(lex_t* lex) {
    return symbol;
 }
 
-char symbol_match(symbol_t symbol, const char* sym);
-inline char symbol_match(symbol_t symbol, const char* sym) {
+static inline char symbol_match(symbol_t symbol, const char* sym) {
    uint32_t x = 0;
    while(x < symbol.len && symbol.c[x] == sym[x] && sym[x] != 0) x++;
    return x == symbol.len;
@@ -351,7 +332,7 @@ typedef struct {
    token_type type;
 } token_t;
 
-token_t lex_read_token(lex_t* lex) {
+static token_t lex_read_token(lex_t* lex) {
    lex_skip_spaces(lex);
 
    token_t t = {0};

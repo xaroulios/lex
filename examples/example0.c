@@ -12,7 +12,7 @@
 // and so on!
 #define LEX_SPECIAL {'n', '\n', '\\', '\\', '"', '"'}
 
-#include "lex.h"
+#include "../lex.h"
 
 int main() {
    lex_t lex = lex_new("2 + 3.14-10.9f \"hello \\nworld\"NO! \"\\\" okay\" +k\n2");
