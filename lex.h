@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef _NC_LEX
 #define _NC_LEX
 
+#include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<stdint.h>
