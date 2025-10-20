@@ -94,7 +94,7 @@ typedef struct {
 } lex_t;
 
 static inline lex_t lex_new(const char* input) {
-   return (lex_t) { .sb = string_new(), .line = 1, .line_change_pos = 0, .input = input, .pos = 0 };
+   return (lex_t) { .sb = string_new(), .line = 1, .line_change_pos = -1, .input = input, .pos = 0 };
 }
 
 static inline void lex_free(lex_t* lex) {
