@@ -284,6 +284,8 @@ static inline uint64_t lex_read_int(lex_t* lex) {
 typedef struct { 
    const char* c;
    uint32_t len;
+
+   int index; // used when defined by user
 } symbol_t;
 
 static inline symbol_t lex_read_symbol(lex_t* lex) {
@@ -296,12 +298,14 @@ static inline symbol_t lex_read_symbol(lex_t* lex) {
       if(lex_check_s(lex, _symbols[i])) {
           symbol.c   = _symbols[i];
 	  symbol.len = lex->pos - x;
+	  symbol.index = i;
           return symbol;
       }
    }
    
    symbol.c   = lex->input + lex->pos++;
    symbol.len = 1;
+   symbol.index = -1;
    return symbol;
 }
 
